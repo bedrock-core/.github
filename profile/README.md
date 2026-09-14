@@ -1,21 +1,21 @@
-![Bedrock Core](assets/logo.png)
+<p align="center">
+  <img alt="Bedrock Core" src="assets/logo.png">
+</p>
 
-A framework for Minecraft Bedrock
-Developing a future where addons interact between them
+<h1 align="center">Addons Better Connected</h1>
 
-## Projects
+<p align="center">
+  Addons run in isolated realms. <code>@bedrock-core</code> lets yours find each other,<br>
+  call each other, share state, and draw custom UI the whole world can use.
+</p>
 
-| Repo | Description |
-|------|--------------|
-| [**server**](https://github.com/bedrock-core/server) | Discovery, replicated state, typed RPC, features, configuration and guides. |
-| [**ui**](https://github.com/bedrock-core/ui) | Custom JSX-driven UI system for Minecraft Bedrock.  |
-| [**docs**](https://github.com/bedrock-core/docs) | Documentation site ([bedrock-core.drav.dev](https://bedrock-core.drav.dev)), built with Docusaurus. |
-| [**regolith-filters**](https://github.com/bedrock-core/regolith-filters) | Filters for the [Regolith](https://github.com/Bedrock-OSS/regolith) addon compiler: a TypeScript bundler for `BP/scripts/`, typed localization, in-game guides authored in MDX, and block/entity generation. |
-| [**setup-regolith**](https://github.com/bedrock-core/setup-regolith) | GitHub Action to download the Regolith CLI and add it to PATH so you can run regolith in your workflow steps. |
+<p align="center">
+  <code>npx @bedrock-core/cli</code>
+</p>
 
-## Links
+<p align="center">
+  <a href="https://bedrock-core.drav.dev"><img alt="Read the docs" src="https://img.shields.io/badge/Read_the_docs-6F4CFF?style=for-the-badge&logo=readthedocs&logoColor=white"></a>
+  <a href="https://bedrock-core.drav.dev/discord"><img alt="Join the Discord" src="https://img.shields.io/badge/Join_the_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
+</p>
 
-- 📘 Docs: <https://bedrock-core.drav.dev>
-- 💬 Issues & discussion: open an issue on the relevant repo above
-
-[![GitHub](https://img.shields.io/badge/GitHub-bedrock--core-blue?logo=github)](https://github.com/bedrock-core)
+<p align="center"><sub>Found a bug? Open an issue on the relevant repository below.</sub></p>
