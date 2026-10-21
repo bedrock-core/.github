@@ -6,7 +6,7 @@
 
 <p align="center">
   Addons run in isolated realms. <code>@bedrock-core</code> lets yours find each other,<br>
-  call each other, share state, and draw custom UI the whole world can use.
+  work together, and draw custom UI the whole world can use.
 </p>
 
 <p align="center">
