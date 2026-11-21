@@ -1,0 +1,27 @@
+name: Set up Minecraft compatibility
+description: Install the repository dependencies for a resolved Minecraft target
+inputs:
+  target:
+    description: Resolved Minecraft matrix row as JSON
+    required: true
+  fixtures:
+    description: Fixture directories whose pack manifests need matching SDKs, one per line
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: bedrock-core/.github/.github/actions/setup-yarn@main
+      with:
+        lockfile: yarn.lock
+    - name: Apply Minecraft SDK and fixture versions
+      if: fromJSON(inputs.target).id != 'locked'
+      shell: bash
+      env:
+        COMPATIBILITY_ROW: ${{ inputs.target }}
+        COMPATIBILITY_FIXTURES: ${{ inputs.fixtures }}
+      run: node "$GITHUB_ACTION_PATH/../../../scripts/setup-minecraft-compatibility.ts"
+    - name: Install repository dependencies
+      shell: bash
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: ${{ fromJSON(inputs.target).id == 'locked' && 'true' || 'false' }}
+      run: yarn install

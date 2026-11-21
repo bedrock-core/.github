@@ -1,0 +1,54 @@
+name: Resolve Minecraft releases
+
+on:
+  workflow_call:
+    inputs:
+      require-gametest:
+        description: Only include runtime targets with a matching GameTest SDK
+        type: boolean
+        default: false
+    outputs:
+      matrix:
+        description: Exact game and SDK compatibility targets
+        value: ${{ jobs.resolve.outputs.matrix }}
+      games:
+        description: Selected stable and Preview game builds
+        value: ${{ jobs.resolve.outputs.games }}
+
+env:
+  ACT: ''
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      games: ${{ steps.resolve.outputs.games }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: bedrock-core/.github
+          ref: main
+          path: core-ci
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.13.0
+          package-manager-cache: false
+      - name: Resolve the BDS and SDK matrix
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          node core-ci/scripts/resolve-minecraft-compatibility.ts
+          --output "${{ runner.temp }}/minecraft-compatibility.json"
+          ${{ inputs.require-gametest && '--require-gametest' || '' }}
+      - uses: actions/upload-artifact@v7
+        if: env.ACT != 'true'
+        with:
+          name: minecraft-compatibility-inputs
+          path: ${{ runner.temp }}/minecraft-compatibility.json

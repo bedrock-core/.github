@@ -1,0 +1,63 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "description": "Validate updates to Minecraft release sources together.",
+      "matchManagers": [
+        "custom.jsonata"
+      ],
+      "groupName": "Minecraft sources",
+      "groupSlug": "minecraft-sources",
+      "separateMajorMinor": false,
+      "separateMultipleMajor": false,
+      "prCreation": "immediate",
+      "prPriority": 10
+    },
+    {
+      "matchDatasources": [
+        "custom.minecraft-npm",
+        "custom.minecraft-releases"
+      ],
+      "versioning": "regex:^(?<patch>\\d+)$"
+    },
+    {
+      "matchManagers": [
+        "custom.jsonata"
+      ],
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "pinDigests": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": [
+        "/^sources\\.json$/"
+      ],
+      "matchStrings": [
+        "bds.{\"depName\": \"Bedrock Dedicated Server builds\", \"packageName\": repository, \"datasource\": \"git-refs\", \"currentValue\": branch, \"currentDigest\": commit}",
+        "$each(npm, function($value, $name) { {\"depName\": $name, \"datasource\": \"custom.minecraft-npm\", \"currentValue\": $value} })",
+        "$each(releases, function($value, $name) { {\"depName\": $name, \"datasource\": \"custom.minecraft-releases\", \"currentValue\": $value} })"
+      ]
+    }
+  ],
+  "customDatasources": {
+    "minecraft-npm": {
+      "defaultRegistryUrlTemplate": "https://registry.npmjs.org/{{{packageName}}}",
+      "format": "json",
+      "transformTemplates": [
+        "{\"releases\": [{\"version\": $string($toMillis(time.modified)), \"releaseTimestamp\": time.modified}]}"
+      ]
+    },
+    "minecraft-releases": {
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/{{{packageName}}}/releases?per_page=100",
+      "format": "json",
+      "transformTemplates": [
+        "($published := $[draft = false]; $dates := [$published.published_at, $published.assets[state = \"uploaded\"].updated_at]; $latest := $max($map($dates, function($stamp) {$toMillis($stamp)})); {\"releases\": [{\"version\": $string($latest), \"releaseTimestamp\": $fromMillis($latest)}]})"
+      ]
+    }
+  }
+}

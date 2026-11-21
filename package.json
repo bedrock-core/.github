@@ -1,0 +1,15 @@
+{
+  "name": "@bedrock-core/.github",
+  "description": ".github profile and some shared CI and scripts",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.18.0",
+  "scripts": {
+    "typecheck": "tsc -p scripts/tsconfig.json",
+    "test": "node --test scripts/tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.9",
+    "typescript-native": "npm:typescript@7.1.0-beta"
+  }
+}

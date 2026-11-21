@@ -1,0 +1,28 @@
+name: Set up Core Yarn
+description: Set up Node and enable the workspace's pinned Yarn version
+inputs:
+  lockfile:
+    description: Path to the Yarn lockfile when caching dependencies
+    default: ''
+  registry:
+    description: npm registry for publication
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: '26.13.0'
+        package-manager-cache: false
+        registry-url: ${{ inputs.registry }}
+    - name: Install Corepack
+      shell: bash
+      run: |
+        npm install --global corepack@0.36.0
+        corepack enable yarn
+    - uses: actions/setup-node@v7
+      if: inputs.lockfile != ''
+      with:
+        node-version: '26.13.0'
+        cache: yarn
+        cache-dependency-path: ${{ inputs.lockfile }}
