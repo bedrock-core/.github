@@ -1,0 +1,45 @@
+name: Prepare Minecraft dependency update
+description: Generate the dependency and peer changes to use for validation and the pull request
+inputs:
+  matrix:
+    description: Resolved Minecraft compatibility matrix as JSON
+    required: true
+outputs:
+  base:
+    description: Commit the update is based on
+    value: ${{ steps.patch.outputs.base }}
+runs:
+  using: composite
+  steps:
+    - uses: bedrock-core/.github/.github/actions/setup-yarn@main
+      with:
+        lockfile: yarn.lock
+    - name: Generate Minecraft dependency updates
+      shell: bash
+      env:
+        COMPATIBILITY_MATRIX: ${{ inputs.matrix }}
+      run: |
+        tooling="$GITHUB_ACTION_PATH/../../.."
+        (cd "$tooling" && yarn workspaces focus --production)
+        node "$tooling/scripts/prepare-minecraft-update.ts"
+    - name: Update the lockfile
+      shell: bash
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: 'false'
+      run: yarn install --mode=update-lockfile
+    - name: Save the candidate changes
+      id: patch
+      shell: bash
+      env:
+        BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        base="$(git merge-base HEAD "origin/$BASE_BRANCH")"
+        paths=(sources.json package.json ':(glob)**/package.json' yarn.lock)
+        git diff --binary "$base" -- "${paths[@]}" > "$RUNNER_TEMP/minecraft-update.patch"
+        echo "base=$base" >> "$GITHUB_OUTPUT"
+    - uses: actions/upload-artifact@v7
+      with:
+        name: minecraft-update
+        path: ${{ runner.temp }}/minecraft-update.patch
+        if-no-files-found: error
+        overwrite: true

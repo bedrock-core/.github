@@ -1,0 +1,38 @@
+name: Open the tested Minecraft update PR
+description: Publish the candidate changes after the repository compatibility checks pass
+inputs:
+  base:
+    description: Tested base commit
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.base }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: bedrock-core/.github/.github/actions/apply-minecraft-update@main
+    - name: Confirm the tested refs are current
+      shell: bash
+      env:
+        BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        BASE_SHA: ${{ inputs.base }}
+      run: |
+        current_base="$(git ls-remote --exit-code origin "refs/heads/$BASE_BRANCH" | cut -f1)"
+        current_source="$(git ls-remote --exit-code origin "$GITHUB_REF" | cut -f1)"
+        if [[ "$current_base" != "$BASE_SHA" || "$current_source" != "$GITHUB_SHA" ]]; then
+          echo "::error::The default branch or Minecraft source branch advanced during compatibility checks."
+          exit 1
+        fi
+    - uses: peter-evans/create-pull-request@v8
+      with:
+        base: ${{ github.event.repository.default_branch }}
+        branch: automation/minecraft-update
+        commit-message: Update Minecraft SDKs and peer ranges
+        title: Update Minecraft SDKs and peer ranges
+        body: |
+          The proposed lockfile and Minecraft compatibility matrix passed the repository checks.
+
+          [Compatibility run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        delete-branch: true

@@ -8,8 +8,12 @@
     "typecheck": "tsc -p scripts/tsconfig.json",
     "test": "node --test scripts/tests/*.test.ts"
   },
+  "dependencies": {
+    "semver": "7.8.5"
+  },
   "devDependencies": {
     "@types/node": "25.9.9",
+    "@types/semver": "^7.7.1",
     "typescript-native": "npm:typescript@7.1.0-beta"
   }
 }
