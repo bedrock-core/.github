@@ -3,7 +3,7 @@ import { globSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import type { createMatrix } from './resolve-minecraft-compatibility.ts';
+import { stableLines, type createMatrix } from './resolve-minecraft-compatibility.ts';
 
 type Matrix = ReturnType<typeof createMatrix>;
 
@@ -18,41 +18,23 @@ interface PackageManifest {
 }
 
 export function minecraftPeerRange(current: string, versions: readonly string[]): string {
-  const floors = new Map<number, string>();
-  const remember = (version: string): void => {
-    const major = semver.major(version);
-    const previous = floors.get(major);
-
-    if (!previous || semver.lt(version, previous)) { floors.set(major, version); }
-  };
-
-  const oldPrereleases: { clause: string; track: string | number }[] = [];
-
-  for (const clause of current.split('||')) {
-    const range = clause.trim();
-    const floor = semver.minVersion(range);
-
-    if (!floor || floor.version === '0.0.0') { continue; }
-
-    if (floor.prerelease.length) {
-      oldPrereleases.push({
-        clause: range === `>=${floor.version}` ? `^${floor.version}` : range,
-        track: floor.prerelease[0],
-      });
-    }
-    else { remember(floor.version); }
+  const stable: string[] = [];
+  for (const version of versions.filter(version => !semver.prerelease(version)).sort(semver.compare)) {
+    if (!stable.some(range => semver.satisfies(version, range))) { stable.push(`~${version}`); }
   }
 
-  const prereleases = [...new Set(versions.filter(version => semver.prerelease(version)))].sort(semver.compare);
-  const tracks = new Set(prereleases.map(version => semver.prerelease(version)?.[0]));
-  const retained = oldPrereleases.filter(({ track }) => !tracks.size || typeof track === 'string' && !tracks.has(track));
+  if (!stable.length) { return current; }
 
-  for (const version of versions) {
-    if (!semver.prerelease(version)) { remember(version); }
-  }
+  const previousPreview = current.split('||').map(clause => clause.trim())
+    .filter(version => /-(rc|beta)\.\d+\.\d+\.\d+-preview\.\d+$/.test(version) && semver.valid(version))
+    .sort(semver.rcompare);
+  const preview = ['rc', 'beta'].flatMap(track => {
+    const matchesTrack = (version: string): boolean => semver.prerelease(version)?.[0] === track;
+    const version = versions.find(matchesTrack) ?? previousPreview.find(matchesTrack);
 
-  const stable = [...floors.values()].sort(semver.compare).map(version => `^${version}`);
-  const range = [...stable, ...retained.map(({ clause }) => clause), ...prereleases].join(' || ');
+    return version ? [version] : [];
+  }).sort(semver.compare);
+  const range = [...stable, ...preview].join(' || ');
 
   assert(versions.every(version => semver.satisfies(version, range)), `Peer range ${range} does not cover ${versions.join(', ')}`);
 
@@ -70,10 +52,18 @@ function vanillaDataPeerRange(current: string, versions: readonly string[]): str
 export function prepareMinecraftUpdate(root: string, matrix: Matrix): void {
   const rootManifest = path.join(root, 'package.json');
   const project = JSON.parse(readFileSync(rootManifest, 'utf8')) as PackageManifest;
-  const targets = matrix.include.filter(row => 'packages' in row);
-  const stable = targets
+  const targets = matrix.include.filter(row => 'packages' in row)
+    .sort((a, b) => b.gameVersion.localeCompare(a.gameVersion, 'en', { numeric: true }));
+  const stableTargets = targets
     .filter(row => row.gameChannel === 'stable' && row.apiChannel === 'stable')
-    .sort((a, b) => b.gameVersion.localeCompare(a.gameVersion, 'en', { numeric: true }))[0];
+    .slice(0, stableLines);
+  const stable = stableTargets[0];
+  const previewTargets = ['rc', 'beta'].flatMap(channel => {
+    const target = targets.find(row => row.gameChannel === 'preview' && row.apiChannel === channel);
+
+    return target ? [target] : [];
+  });
+  const sdkTargets = [...stableTargets, ...previewTargets];
   const files = new Set([
     'package.json',
     ...globSync((project.workspaces ?? []).map(workspace => path.join(workspace, 'package.json')), { cwd: root }),
@@ -100,7 +90,8 @@ export function prepareMinecraftUpdate(root: string, matrix: Matrix): void {
 
         if (!current) { continue; }
 
-        const versions = targets.flatMap(row => row.packages[name] ? [row.packages[name]] : []);
+        const peerTargets = name === vanillaDataPackage ? targets : sdkTargets;
+        const versions = peerTargets.flatMap(row => row.packages[name] ? [row.packages[name]] : []);
 
         if (!versions.length) { continue; }
 

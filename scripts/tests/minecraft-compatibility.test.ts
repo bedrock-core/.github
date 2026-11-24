@@ -163,9 +163,10 @@ test('prepares peer ranges and stable pins from the same matrix', (t) => {
   assert.deepEqual(updated.devDependencies, { '@minecraft/server': '*' });
   assert.equal(updated.peerDependencies.eslint, peerDependencies.eslint);
   assert.equal(updated.peerDependencies['@minecraft/debug-utilities'], peerDependencies['@minecraft/debug-utilities']);
-  assert.ok(updated.peerDependencies['@minecraft/server'].startsWith('^2.9.0 || '));
-  assert.ok(semver.satisfies('2.9.0', updated.peerDependencies['@minecraft/server']));
-  assert.ok(!semver.satisfies('3.0.0', updated.peerDependencies['@minecraft/server']));
+  assert.equal(updated.peerDependencies['@minecraft/server'], '~2.10.0 || ~2.11.0 || 2.12.0-rc.1.26.70-preview.23 || 2.13.0-beta.1.26.70-preview.23');
+  assert.equal(updated.peerDependencies['@minecraft/server-ui'], '~2.2.0 || ~2.3.0 || 2.4.0-rc.1.26.70-preview.23 || 2.5.0-beta.1.26.70-preview.23');
+  assert.ok(!semver.satisfies('2.9.0', updated.peerDependencies['@minecraft/server']));
+  assert.ok(!semver.satisfies('2.12.0', updated.peerDependencies['@minecraft/server']));
   assert.ok(!semver.satisfies('2.13.0-beta.1.26.70-preview.99', updated.peerDependencies['@minecraft/server']));
   const dataRange = updated.peerDependencies['@minecraft/vanilla-data'];
 
@@ -174,8 +175,9 @@ test('prepares peer ranges and stable pins from the same matrix', (t) => {
   assert.ok(!semver.satisfies('1.26.70-preview.22', dataRange));
 
   for (const row of runtime) {
-    assert.ok(semver.satisfies(row.packages['@minecraft/server'], updated.peerDependencies['@minecraft/server']));
-    assert.ok(semver.satisfies(row.packages['@minecraft/server-ui'], updated.peerDependencies['@minecraft/server-ui']));
+    const supported = row.gameChannel === 'preview' || row.apiChannel === 'stable';
+    assert.equal(semver.satisfies(row.packages['@minecraft/server'], updated.peerDependencies['@minecraft/server']), supported);
+    assert.equal(semver.satisfies(row.packages['@minecraft/server-ui'], updated.peerDependencies['@minecraft/server-ui']), supported);
     assert.ok(semver.satisfies(row.packages['@minecraft/vanilla-data'], dataRange));
   }
 
@@ -190,13 +192,28 @@ test('prepares peer ranges and stable pins from the same matrix', (t) => {
   assert.equal(readJson(library).peerDependencies['@minecraft/vanilla-data'], dataRange);
 });
 
-test('preserves an advertised prerelease track while its new SDK is pending', () => {
-  const existing = '^2.9.0 || 2.13.0-beta.1.26.70-preview.23';
+test('advances the stable peer floor when a third stable line is resolved', (t) => {
+  const root = project(t);
+  const library = path.join(root, 'package.json');
+  const nextStable: Release = {
+    gameVersion: '1.26.70.1',
+    gameChannel: 'stable',
+    vanillaData: '1.26.70',
+    gameTest: '1.0.0-beta.1.26.70-stable',
+    apis: { stable: { server: '2.12.0', serverUi: '2.4.0' } },
+  };
+
+  writeJson(library, { peerDependencies: { '@minecraft/server': '~2.10.0 || ~2.11.0' } });
+  prepareMinecraftUpdate(root, createMatrix([...releases, nextStable]));
+
+  const range = readJson(library).peerDependencies['@minecraft/server'];
+  assert.equal(range, '~2.11.0 || ~2.12.0 || 2.12.0-rc.1.26.70-preview.23 || 2.13.0-beta.1.26.70-preview.23');
+});
+
+test('preserves the last exact Preview SDK while its track is pending', () => {
+  const existing = '^2.9.0 || 2.12.0-beta.1.26.60-stable || 2.13.0-beta.1.26.70-preview.22 || 2.13.0-beta.1.26.70-preview.23';
   const versions = ['2.11.0', '2.12.0-rc.1.26.70-preview.26'];
 
-  assert.equal(minecraftPeerRange(existing, versions), `${existing} || ${versions[1]}`);
-  const stableOnly = minecraftPeerRange('>=2.9.0 || >=2.10.0-0', ['2.11.0']);
-
-  assert.ok(semver.satisfies('2.10.0-beta.1.26.40-stable', stableOnly));
-  assert.ok(!semver.satisfies('3.0.0', stableOnly));
+  assert.equal(minecraftPeerRange(existing, versions), '~2.11.0 || 2.12.0-rc.1.26.70-preview.26 || 2.13.0-beta.1.26.70-preview.23');
+  assert.equal(minecraftPeerRange('>=2.9.0 || >=2.10.0-0', ['2.11.0']), '~2.11.0');
 });

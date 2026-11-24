@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 
 const bdsUrl = 'https://raw.githubusercontent.com/Bedrock-OSS/BDS-Versions/main/versions.json';
 const samplesApi = 'https://api.github.com/repos/Mojang/bedrock-samples';
-const stableLines = 2;
+export const stableLines = 2;
 const gameChannels = ['stable', 'preview'] as const;
 const apiChannels = ['stable', 'rc', 'beta'] as const;
 const packageNames = {
