@@ -4,6 +4,9 @@ inputs:
   base:
     description: Tested base commit
     required: true
+  token:
+    description: Token for pushing the update branch and opening or updating its pull request
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
@@ -27,6 +30,7 @@ runs:
         fi
     - uses: peter-evans/create-pull-request@v8
       with:
+        token: ${{ inputs.token }}
         base: ${{ github.event.repository.default_branch }}
         branch: automation/minecraft-update
         commit-message: Update Minecraft SDKs and peer ranges
